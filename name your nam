@@ -1,4 +1,4 @@
--- achzero ex v12 | MM2 (Fusion Blink Fling)
+-- achzero ex v13 | MM2 (Weld Fusion Fling)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -47,7 +47,7 @@ Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 8)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundTransparency = 1
-title.Text = "achzero ex v12"
+title.Text = "achzero ex v13"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBlack
 title.TextSize = 20
@@ -100,7 +100,7 @@ addToggle("Aimbot (Murderer)", "aimbot")
 addToggle("AntiAim", "antiaim")
 addToggle("Speed x2", "speedX2")
 addToggle("Jump x2", "jumpX2")
-addToggle("Fusion Fling", "blinkFling")
+addToggle("Weld Fusion Fling", "blinkFling")
 
 -- ====== ПЕРЕТАСКИВАНИЕ ОКНА ======
 local dragging, dragStart, startPos
@@ -235,7 +235,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ====== FUSION FLING (Слияние и Возврат) ======
+-- ====== WELD FUSION FLING (Жесткая сварка) ======
 local flinging = false
 local flingCD = {}
 
@@ -245,9 +245,9 @@ RunService.Stepped:Connect(function()
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
-    -- Ищем жертву (касание)
+    -- Ищем жертву
     local targetPlr, targetHrp = nil, nil
-    local shortest = 5 -- Радиус касания
+    local shortest = 6
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LP then continue end
@@ -268,49 +268,55 @@ RunService.Stepped:Connect(function()
         flinging = true
 
         task.spawn(function()
-            -- 1. Запоминаем нашу позицию
             local originalCFrame = hrp.CFrame
             
-            -- 2. ВЛЕТАЕМ ВНУТРЬ (сливаемся)
-            hrp.CFrame = targetHrp.CFrame
+            -- 1. ОТКЛЮЧАЕМ КОЛЛИЗИЮ (чтобы ты не отскочил от него как мячик)
             hrp.CanCollide = false
+            targetHrp.CanCollide = false
             
-            -- 3. ЖДЕМ 0.2 СЕКУНДЫ (чтобы визуально "залезть" в него)
-            task.wait(0.2)
+            -- 2. ТЕЛЕПОРТИРУЕМСЯ ВНУТРЬ
+            hrp.CFrame = targetHrp.CFrame
             
-            -- 4. ФЛИНГ (Даем скорость ВАМ ОБОИМ)
+            -- 3. СВАРКА (WELD)
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = targetHrp
+            weld.Part1 = hrp
+            weld.Parent = targetHrp
+            
+            -- Ждем 0.15 сек, чтобы ты визуально оказался внутри него
+            task.wait(0.15)
+            
+            -- 4. ДАЕМ СКОРОСТЬ ВАМ ОБОИМ (летим вместе)
             local bv = Instance.new("BodyVelocity")
-            bv.Velocity = Vector3.new(0, 5000, 0) -- Скорость в космос
+            bv.Velocity = Vector3.new(0, 5000, 0)
             bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = hrp -- Вешаем на тебя, но так как мы сварены, жертва летит с тобой
             
-            local bav = Instance.new("BodyAngularVelocity")
-            bav.AngularVelocity = Vector3.new(99999, 99999, 99999)
-            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
-            
-            -- Вешаем на нас обоих
-            bv.Parent = hrp
-            bav.Parent = hrp
-            
-            local tBv = bv:Clone()
-            local tBav = bav:Clone()
-            tBv.Parent = targetHrp
-            tBav.Parent = targetHrp
-            
-            -- 5. ЖДЕМ 0.5 СЕКУНДЫ (летим вместе)
-            task.wait(0.5)
+            -- 5. ЖДЕМ 0.4 СЕКУНДЫ (ты и жертва летите вверх)
+            task.wait(0.4)
             
             -- 6. ОТЦЕПЛЯЕМСЯ И ВОЗВРАЩАЕМСЯ
-            hrp.CFrame = originalCFrame
+            weld:Destroy() -- Ломаем сварку
+            bv:Destroy()   -- Убираем скорость с себя
+            
+            hrp.CFrame = originalCFrame -- Тепаемся назад
             hrp.AssemblyLinearVelocity = Vector3.zero
             hrp.AssemblyAngularVelocity = Vector3.zero
             hrp.CanCollide = true
             
-            -- Удаляем наши эффекты (у жертвы оставляем, чтобы он летел дальше)
-            bv:Destroy()
-            bav:Destroy()
+            -- Жертве оставляем скорость, чтобы он летел дальше
+            local tBv = Instance.new("BodyVelocity")
+            tBv.Velocity = Vector3.new(0, 5000, 0)
+            tBv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            tBv.Parent = targetHrp
+            
+            task.delay(1, function()
+                if tBv then tBv:Destroy() end
+                if targetHrp then targetHrp.CanCollide = true end
+            end)
             
             flinging = false
-            task.wait(1) -- Кулдаун на себя
+            task.wait(1) -- Кулдаун
             flingCD[targetPlr] = nil
         end)
     end
