@@ -1,4 +1,4 @@
--- achzero ex v8 | MM2 (Perfect ESP + Real Fling)
+-- achzero ex v10 | MM2 (Blink Fling + Clean ESP)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,7 +13,6 @@ gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.Parent = game:GetService("CoreGui")
 
--- Черный кружок
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.fromOffset(45, 45)
 toggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
@@ -24,7 +23,6 @@ toggleBtn.TextScaled = true
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.AutoButtonColor = false
 toggleBtn.Parent = gui
-
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 local stroke = Instance.new("UIStroke", toggleBtn)
 stroke.Color = Color3.fromRGB(80, 80, 80)
@@ -49,7 +47,7 @@ Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 8)
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 35)
 title.BackgroundTransparency = 1
-title.Text = "achzero ex v8"
+title.Text = "achzero ex v10"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.Font = Enum.Font.GothamBlack
 title.TextSize = 20
@@ -62,7 +60,6 @@ RunService.RenderStepped:Connect(function(dt)
     rainbowStroke.Color = Color3.fromHSV((tick() * 0.5) % 1, 1, 1)
 end)
 
--- ====== СПИСОК ФУНКЦИЙ ======
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, 0, 1, -40)
 scroll.Position = UDim2.new(0, 0, 0, 40)
@@ -75,12 +72,11 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 4)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = scroll
-
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 5)
 end)
 
-local flags = { espBox = false, antiaim = false, speedX2 = false, jumpX2 = false, touchFling = false, aimbot = false }
+local flags = { espBox = false, antiaim = false, speedX2 = false, jumpX2 = false, blinkFling = false, aimbot = false }
 
 local function addToggle(name, key)
     local btn = Instance.new("TextButton")
@@ -92,7 +88,6 @@ local function addToggle(name, key)
     btn.TextSize = 13
     btn.Parent = scroll
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-
     btn.MouseButton1Click:Connect(function()
         flags[key] = not flags[key]
         btn.Text = name .. ": " .. (flags[key] and "ON" or "OFF")
@@ -100,12 +95,12 @@ local function addToggle(name, key)
     end)
 end
 
-addToggle("esp box", "espBox")
-addToggle("aim murder", "aimbot")
-addToggle("antiaim", "antiaim")
-addToggle("speedx2", "speedX2")
-addToggle("jumpx2", "jumpX2")
-addToggle("touch fling", "touchFling")
+addToggle("ESP Box", "espBox")
+addToggle("Aimbot (Murderer)", "aimbot")
+addToggle("AntiAim", "antiaim")
+addToggle("Speed x2", "speedX2")
+addToggle("Jump x2", "jumpX2")
+addToggle("Blink Fling (Explode)", "blinkFling")
 
 -- ====== ПЕРЕТАСКИВАНИЕ ОКНА ======
 local dragging, dragStart, startPos
@@ -123,7 +118,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 toggleBtn.MouseButton1Click:Connect(function() menu.Visible = not menu.Visible end)
 
--- ====== ESP BOX (Твой парсер + мой плавный бокс) ======
+-- ====== ESP BOX ======
 local espFolder = Instance.new("Folder", gui)
 local espCache = {}
 
@@ -133,21 +128,21 @@ RunService.RenderStepped:Connect(function()
         local char = plr.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local data = espCache[plr]
         
-        if not (hrp and hum and hum.Health > 0) or not flags.espBox then
-            if espCache[plr] then espCache[plr].box.Visible = false end
+        if not flags.espBox or not (hrp and hum and hum.Health > 0) then
+            if data then data.box.Visible = false; data.hpBack.Visible = false end
             continue
         end
 
-        -- ТВОЙ ИДЕАЛЬНЫЙ ПАРСЕР ЦВЕТОВ
         local isMurder, isSherif = false, false
-        local backpack = plr:FindFirstChild("Backpack")
         for _, obj in ipairs(char:GetChildren()) do
             if obj:IsA("Tool") then
                 if obj.Name == "Knife" then isMurder = true end
                 if obj.Name == "Gun" or obj.Name == "Revolver" then isSherif = true end
             end
         end
+        local backpack = plr:FindFirstChild("Backpack")
         if backpack then
             for _, obj in ipairs(backpack:GetChildren()) do
                 if obj:IsA("Tool") then
@@ -161,46 +156,35 @@ RunService.RenderStepped:Connect(function()
         if isMurder then color = Color3.fromRGB(255, 40, 40) end
         if isSherif then color = Color3.fromRGB(40, 140, 255) end
 
-        local data = espCache[plr]
         if not data then
             local box = Instance.new("Frame")
-            box.BackgroundTransparency = 1
-            box.BorderSizePixel = 0
-            box.Parent = espFolder
+            box.BackgroundTransparency = 1; box.BorderSizePixel = 0; box.Parent = espFolder
             local s = Instance.new("UIStroke", box)
-            s.Thickness = 1.5
-            s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+            s.Thickness = 1.5; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             local hpBack = Instance.new("Frame", espFolder)
-            hpBack.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            hpBack.BorderSizePixel = 0
+            hpBack.BackgroundColor3 = Color3.fromRGB(0, 0, 0); hpBack.BorderSizePixel = 0
             local hpFill = Instance.new("Frame", hpBack)
             hpFill.BorderSizePixel = 0
             data = { box = box, stroke = s, hpBack = hpBack, hpFill = hpFill }
             espCache[plr] = data
         end
 
-        -- МОЙ ПЛАВНЫЙ РАСЧЕТ (не дергается)
         local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
         if onScreen then
             local dist = (Camera.CFrame.Position - hrp.Position).Magnitude
             local h = math.clamp(1800 / math.max(dist, 1), 20, 300)
             local w = h * 0.55
-            
-            data.box.Visible = true
-            data.hpBack.Visible = true
+            data.box.Visible = true; data.hpBack.Visible = true
             data.box.Size = UDim2.fromOffset(w, h)
             data.box.Position = UDim2.fromOffset(pos.X - w/2, pos.Y - h/2)
             data.stroke.Color = color
-            
             local hpRatio = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
             data.hpBack.Size = UDim2.fromOffset(w, 4)
             data.hpBack.Position = UDim2.fromOffset(pos.X - w/2, pos.Y - h/2 - 6)
-            
             data.hpFill.Size = UDim2.new(hpRatio, 0, 1, 0)
             data.hpFill.BackgroundColor3 = hpRatio > 0.6 and Color3.fromRGB(0,255,0) or (hpRatio > 0.3 and Color3.fromRGB(255,165,0) or Color3.fromRGB(255,0,0))
         else
-            data.box.Visible = false
-            data.hpBack.Visible = false
+            data.box.Visible = false; data.hpBack.Visible = false
         end
     end
 end)
@@ -234,7 +218,7 @@ RunService.RenderStepped:Connect(function()
     if tHead then Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, tHead.Position) end
 end)
 
--- ====== ANTIAIM ======
+-- ====== ANTIAIM / SPEED / JUMP ======
 RunService.RenderStepped:Connect(function()
     if not flags.antiaim then return end
     local char = LP.Character
@@ -242,7 +226,6 @@ RunService.RenderStepped:Connect(function()
     if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(math.random(0, 360)), 0) end
 end)
 
--- ====== SPEED x2 / JUMP x2 ======
 RunService.Stepped:Connect(function()
     local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -252,18 +235,19 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- ====== TOUCH FLING (SERVER / Collision) ======
-local isFlinging = false
+-- ====== BLINK FLING (Взрыв + Возврат) ======
 local flingCooldown = {}
+local flinging = false
 
 RunService.Stepped:Connect(function()
-    if not flags.touchFling or isFlinging then return end
+    if not flags.blinkFling or flinging then return end
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local lhum = char and char:FindFirstChildOfClass("Humanoid")
+    if not (hrp and lhum) or lhum.Health <= 0 then return end
 
     local targetPlr, targetHrp = nil, nil
-    local shortest = 6 -- Радиус 6 стадов
+    local shortest = 6
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LP then continue end
@@ -272,46 +256,54 @@ RunService.Stepped:Connect(function()
         local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
         if tHrp and tHum and tHum.Health > 0 then
             local dist = (tHrp.Position - hrp.Position).Magnitude
-            if dist < shortest then
-                shortest = dist
-                targetPlr = plr
-                targetHrp = tHrp
-            end
+            if dist < shortest then shortest = dist; targetPlr = plr; targetHrp = tHrp end
         end
     end
 
-    if targetHrp and targetPlr then
-        if flingCooldown[targetPlr] and tick() - flingCooldown[targetPlr] < 2 then return end
-        flingCooldown[targetPlr] = tick()
-        
-        isFlinging = true
+    if targetHrp and targetPlr and not flingCooldown[targetPlr] then
+        flingCooldown[targetPlr] = true
+        flinging = true
+
         task.spawn(function()
-            local origCam = Camera.CameraType
-            Camera.CameraType = Enum.CameraType.Scriptable
+            -- 1. Сохраняем свою позицию
+            local originalPos = hrp.CFrame
             
-            -- Делаем себя тяжелым
-            hrp.CanCollide = true
-            hrp.CustomPhysicalProperties = PhysicalProperties.new(100, 0, 0, 0, 0)
-            for _, p in ipairs(char:GetDescendants()) do
-                if p:IsA("BasePart") and p ~= hrp then p.CanCollide = false end
-            end
+            -- 2. Телепортируемся к жертве (внутрь)
+            hrp.CFrame = targetHrp.CFrame
             
-            -- 0.3 секунды телепортируемся в жертву
-            local startTime = tick()
-            while tick() - startTime < 0.3 do
-                if targetHrp and targetHrp.Parent then
-                    hrp.CFrame = targetHrp.CFrame
-                    hrp.Velocity = Vector3.new(0, 0, 10)
-                else break end
-                RunService.Heartbeat:Wait()
-            end
+            -- 3. Настраиваем физику взрыва
+            local bav = Instance.new("BodyAngularVelocity")
+            bav.AngularVelocity = Vector3.new(99999, 99999, 99999)
+            bav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            bav.Parent = targetHrp
             
-            -- Сброс
-            hrp.Velocity = Vector3.zero
-            hrp.CustomPhysicalProperties = nil
-            for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = true end end
-            Camera.CameraType = origCam
-            isFlinging = false
+            local bv = Instance.new("BodyVelocity")
+            bv.Velocity = Vector3.new(0, 5000, 0)
+            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+            bv.Parent = targetHrp
+
+            local myBav = Instance.new("BodyAngularVelocity")
+            myBav.AngularVelocity = Vector3.new(99999, 99999, 99999)
+            myBav.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+            myBav.Parent = hrp
+            
+            -- 4. Ждём 1.5 секунды
+            task.wait(1.5)
+            
+            -- 5. Возвращаемся на исходную позицию
+            hrp.CFrame = originalPos
+            
+            -- 6. Сбрасываем скорости и убираем эффекты
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+            
+            if bav then bav:Destroy() end
+            if bv then bv:Destroy() end
+            if myBav then myBav:Destroy() end
+            
+            flinging = false
+            task.wait(1.5) -- Кулдаун после возврата
+            flingCooldown[targetPlr] = nil
         end)
     end
 end)
