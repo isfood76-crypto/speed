@@ -1,4 +1,4 @@
--- achzero delta
+-- achzero delta (ESP + TouchFling + Speed)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -24,9 +24,9 @@ toggleBtn.AutoButtonColor = false
 toggleBtn.Parent = gui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 
--- ====== МЕНЮ (Компактное, со свайпом) ======
+-- ====== МЕНЮ ======
 local menu = Instance.new("Frame")
-menu.Size = UDim2.fromOffset(180, 220) -- Маленькое
+menu.Size = UDim2.fromOffset(180, 220)
 menu.Position = UDim2.new(0.5, -90, 0.5, -110)
 menu.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 menu.Visible = false
@@ -49,7 +49,6 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 12
 title.Parent = inner
 
--- Скролл
 local scroll = Instance.new("ScrollingFrame")
 scroll.Size = UDim2.new(1, 0, 1, -25)
 scroll.Position = UDim2.new(0, 0, 0, 25)
@@ -67,13 +66,11 @@ layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 5)
 end)
 
--- ====== ФЛАГИ ======
-local flags = { touchfling = false, speedhack = false, jumphack = false, antiaim = false, esp = false }
+local flags = { touchfling = false, speedhack = false, esp = false }
 
--- ====== ФУНКЦИЯ ДОБАВЛЕНИЯ ТУМБЛЕРА ======
 local function addToggle(name, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 28) -- Нормальный размер кнопки
+    btn.Size = UDim2.new(1, -10, 0, 28)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     btn.Text = name .. ": off"
     btn.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -89,24 +86,9 @@ local function addToggle(name, key)
     end)
 end
 
--- ====== КНОПКА REWIND (Телепорт на 2.5 сек назад) ======
-local rewindBtn = Instance.new("TextButton")
-rewindBtn.Size = UDim2.new(1, -10, 0, 28)
-rewindBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-rewindBtn.Text = "rewind (tp back)"
-rewindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-rewindBtn.Font = Enum.Font.Gotham
-rewindBtn.TextSize = 12
-rewindBtn.Parent = scroll
-Instance.new("UICorner", rewindBtn).CornerRadius = UDim.new(0, 4)
-
--- ====== ДОБАВЛЯЕМ ФУНКЦИИ В МЕНЮ ======
 addToggle("touch fling", "touchfling")
 addToggle("speedhack", "speedhack")
-addToggle("jumphack", "jumphack")
-addToggle("antiaim", "antiaim")
 addToggle("esp", "esp")
-rewindBtn.Parent = scroll -- Кнопка ревинда в конец списка
 
 -- Перетаскивание меню за заголовок
 local dragging, dragStart, startPos
@@ -124,67 +106,118 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 toggleBtn.MouseButton1Click:Connect(function() menu.Visible = not menu.Visible end)
 
--- ====== TOUCH FLING (Velocity метод) ======
-local flingThread = nil
-local hiddenfling = false
-
-local function startFling()
-    if flingThread then return end
-    hiddenfling = true
-    flingThread = coroutine.create(function()
-        local lp = Players.LocalPlayer
-        local c, hrp, vel, movel = nil, nil, nil, 0.1
-        while hiddenfling do
-            RunService.Heartbeat:Wait()
-            c = lp.Character
-            hrp = c and c:FindFirstChild("HumanoidRootPart")
-            if hrp then
-                vel = hrp.Velocity
-                hrp.Velocity = vel * 10000 + Vector3.new(0, 10000, 0)
-                RunService.RenderStepped:Wait()
-                hrp.Velocity = vel
-                RunService.Stepped:Wait()
-                hrp.Velocity = vel + Vector3.new(0, movel, 0)
-                movel = -movel
-            end
-        end
-    end)
-    coroutine.resume(flingThread)
-end
-
-local function stopFling()
-    hiddenfling = false
-    flingThread = nil
-end
-
--- Перехват включения/выключения touchfling в меню
-for _, child in ipairs(scroll:GetChildren()) do
-    if child:IsA("TextButton") and child.Text:find("touch fling") then
-        child.MouseButton1Click:Connect(function()
-            if flags.touchfling then startFling() else stopFling() end
-        end)
-    end
-end
-
--- ====== SPEEDHACK / JUMPHACK / ANTIAIM ======
+-- ====== SPEEDHACK ======
 RunService.Stepped:Connect(function()
     local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
     if hum then
         hum.WalkSpeed = flags.speedhack and 32 or 16
-        hum.UseJumpPower = true
-        hum.JumpPower = flags.jumphack and 100 or 50
     end
 end)
 
-RunService.RenderStepped:Connect(function()
-    if flags.antiaim then
-        local char = LP.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(math.random(0, 360)), 0) end
-    end
-end)
+-- ====== TOUCH FLING ======
+local flingLoop = nil
+local isFlinging = false
 
--- ====== ESP (Белые везде, в MM2 — цвета) ======
+local function getNearestPlayer()
+    local myChar = LP.Character
+    local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    if not myHrp then return nil end
+    
+    local closest = nil
+    local shortest = 10
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then
+            local tHrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            local tHum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if tHrp and tHum and tHum.Health > 0 then
+                local dist = (tHrp.Position - myHrp.Position).Magnitude
+                if dist < shortest then
+                    shortest = dist
+                    closest = plr
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function startFling()
+    if isFlinging then return end
+    isFlinging = true
+    
+    flingLoop = RunService.Heartbeat:Connect(function()
+        local myChar = LP.Character
+        local myHrp = myChar and myChar:FindFirstChild("HumanoidRootPart")
+        local myHum = myChar and myChar:FindFirstChildOfClass("Humanoid")
+        if not (myHrp and myHum) then return end
+        
+        local target = getNearestPlayer()
+        if not target then return end
+        
+        local tChar = target.Character
+        local tHrp = tChar and tChar:FindFirstChild("HumanoidRootPart")
+        local tHum = tChar and tChar:FindFirstChildOfClass("Humanoid")
+        if not (tHrp and tHum) then return end
+        
+        myHrp.CanCollide = false
+        myHrp.Anchored = true
+        
+        myHrp.CFrame = tHrp.CFrame
+        
+        tHrp.CanCollide = false
+        tHum.PlatformStand = true
+        
+        tHrp.AssemblyLinearVelocity = Vector3.new(
+            math.random(-5000, 5000),
+            math.random(5000, 10000),
+            math.random(-5000, 5000)
+        )
+        tHrp.AssemblyAngularVelocity = Vector3.new(
+            math.random(-5000, 5000),
+            math.random(-5000, 5000),
+            math.random(-5000, 5000)
+        )
+        
+        task.wait(0.1)
+        myHrp.Anchored = false
+        myHrp.CanCollide = true
+    end)
+end
+
+local function stopFling()
+    isFlinging = false
+    if flingLoop then flingLoop:Disconnect(); flingLoop = nil end
+    
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then
+            local tHrp = plr.Character:FindFirstChild("HumanoidRootPart")
+            local tHum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if tHrp then
+                tHrp.CanCollide = true
+                tHrp.AssemblyLinearVelocity = Vector3.zero
+                tHrp.AssemblyAngularVelocity = Vector3.zero
+            end
+            if tHum then
+                tHum.PlatformStand = false
+            end
+        end
+    end
+end
+
+for _, child in ipairs(scroll:GetChildren()) do
+    if child:IsA("TextButton") and child.Text:find("touch fling") then
+        child.MouseButton1Click:Connect(function()
+            if flags.touchfling then
+                startFling()
+            else
+                stopFling()
+            end
+        end)
+    end
+end
+
+-- ====== ESP ======
 local espFolder = Instance.new("Folder", gui)
 local espCache = {}
 
@@ -201,9 +234,8 @@ RunService.RenderStepped:Connect(function()
             continue
         end
 
-        -- Проверка на MM2
         local isMurder, isSherif = false, false
-        if game.PlaceId == 142823291 then -- ID MM2
+        if game.PlaceId == 142823291 then
             for _, obj in ipairs(char:GetChildren()) do
                 if obj:IsA("Tool") then
                     if obj.Name == "Knife" then isMurder = true end
@@ -255,41 +287,5 @@ RunService.RenderStepped:Connect(function()
         else
             data.box.Visible = false; data.hpBack.Visible = false
         end
-    end
-end)
-
--- ====== REWIND (ТП на 2.5 сек назад) ======
-local recordedPositions = {}
-RunService.Heartbeat:Connect(function()
-    local char = LP.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        table.insert(recordedPositions, { time = tick(), cframe = hrp.CFrame })
-        if #recordedPositions > 100 then table.remove(recordedPositions, 1) end
-    end
-end)
-
-rewindBtn.MouseButton1Click:Connect(function()
-    local char = LP.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-
-    local targetTime = tick() - 2.5
-    local closestPos = nil
-    local shortestDiff = math.huge
-
-    for _, data in ipairs(recordedPositions) do
-        local diff = math.abs(data.time - targetTime)
-        if diff < shortestDiff then
-            shortestDiff = diff
-            closestPos = data.cframe
-        end
-    end
-
-    if closestPos then
-        hrp.CFrame = closestPos
-        -- Сбрасываем скорость, чтобы не улететь по инерции
-        hrp.AssemblyLinearVelocity = Vector3.zero
-        hrp.AssemblyAngularVelocity = Vector3.zero
     end
 end)
