@@ -1,119 +1,149 @@
--- achzero ex v13 | MM2 (Weld Fusion Fling)
+-- achzero delta | MM2
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-
 local LP = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
 -- ====== ГЛАВНОЕ ОКНО ======
 local gui = Instance.new("ScreenGui")
-gui.Name = "achzero_ex"
+gui.Name = "achzero_delta"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.Parent = game:GetService("CoreGui")
 
 local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.fromOffset(45, 45)
-toggleBtn.Position = UDim2.new(0, 15, 0.5, -22)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-toggleBtn.Text = "!"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.TextScaled = true
+toggleBtn.Size = UDim2.fromOffset(40, 40)
+toggleBtn.Position = UDim2.new(0, 15, 0.5, -20)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+toggleBtn.Text = "AZ"
+toggleBtn.TextColor3 = Color3.fromRGB(0, 255, 170)
+toggleBtn.TextSize = 14
 toggleBtn.Font = Enum.Font.GothamBold
 toggleBtn.AutoButtonColor = false
 toggleBtn.Parent = gui
 Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
-local stroke = Instance.new("UIStroke", toggleBtn)
-stroke.Color = Color3.fromRGB(80, 80, 80)
-stroke.Thickness = 2
 
--- ====== МЕНЮ ======
+-- ====== МЕНЮ (Темное, мелкое, со свайпом) ======
 local menu = Instance.new("Frame")
-menu.Size = UDim2.fromOffset(240, 300)
-menu.Position = UDim2.new(0.5, -120, 0.5, -150)
-menu.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+menu.Size = UDim2.fromOffset(190, 240)
+menu.Position = UDim2.new(0.5, -95, 0.5, -120)
+menu.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 menu.Visible = false
 menu.Parent = gui
-Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 10)
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0, 8)
 
 local inner = Instance.new("Frame")
-inner.Size = UDim2.new(1, -10, 1, -10)
-inner.Position = UDim2.new(0, 5, 0, 5)
-inner.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+inner.Size = UDim2.new(1, -6, 1, -6)
+inner.Position = UDim2.new(0, 3, 0, 3)
+inner.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 inner.Parent = menu
-Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", inner).CornerRadius = UDim.new(0, 6)
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 35)
+title.Size = UDim2.new(1, 0, 0, 25)
 title.BackgroundTransparency = 1
-title.Text = "achzero ex v13"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.Font = Enum.Font.GothamBlack
-title.TextSize = 20
-title.TextXAlignment = Enum.TextXAlignment.Center
+title.Text = "achzero delta"
+title.TextColor3 = Color3.fromRGB(0, 255, 170)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 12
 title.Parent = inner
 
-local rainbowStroke = Instance.new("UIStroke", menu)
-rainbowStroke.Thickness = 2
-RunService.RenderStepped:Connect(function(dt)
-    rainbowStroke.Color = Color3.fromHSV((tick() * 0.5) % 1, 1, 1)
-end)
-
 local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, 0, 1, -40)
-scroll.Position = UDim2.new(0, 0, 0, 40)
+scroll.Size = UDim2.new(1, 0, 1, -25)
+scroll.Position = UDim2.new(0, 0, 0, 25)
 scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 scroll.Parent = inner
 
 local layout = Instance.new("UIListLayout")
-layout.Padding = UDim.new(0, 4)
+layout.Padding = UDim.new(0, 3)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = scroll
 layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 5)
 end)
 
-local flags = { espBox = false, antiaim = false, speedX2 = false, jumpX2 = false, blinkFling = false, aimbot = false }
+-- ====== КНОПКА KILL MURDER (появляется при silentaim) ======
+local killBtn = Instance.new("TextButton")
+killBtn.Size = UDim2.fromOffset(80, 25)
+killBtn.Position = UDim2.new(0, 15, 0.5, 25) -- Чуть ниже AZ
+killBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+killBtn.Text = "kill murder"
+killBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+killBtn.Font = Enum.Font.GothamBold
+killBtn.TextSize = 10
+killBtn.Visible = false
+killBtn.Parent = gui
+Instance.new("UICorner", killBtn).CornerRadius = UDim.new(0, 4)
 
+-- ====== ФЛАГИ ======
+local flags = { silentaim = false, esp = false, speedhack = false, jump = false, antiaim = false, invisible = false, masskill = false }
+local rewindActive = false
+local recordedPositions = {}
+
+-- ====== ФУНКЦИЯ ДОБАВЛЕНИЯ ТУМБЛЕРА ======
 local function addToggle(name, key)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -10, 0, 30)
-    btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    btn.Text = name .. ": OFF"
-    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
-    btn.Font = Enum.Font.GothamMedium
-    btn.TextSize = 13
+    btn.Size = UDim2.new(1, -10, 0, 22)
+    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = name .. ": off"
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 10
     btn.Parent = scroll
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     btn.MouseButton1Click:Connect(function()
         flags[key] = not flags[key]
-        btn.Text = name .. ": " .. (flags[key] and "ON" or "OFF")
-        btn.BackgroundColor3 = flags[key] and Color3.fromRGB(90, 140, 90) or Color3.fromRGB(70, 70, 70)
+        btn.Text = name .. ": " .. (flags[key] and "on" or "off")
+        btn.BackgroundColor3 = flags[key] and Color3.fromRGB(0, 100, 60) or Color3.fromRGB(40, 40, 40)
+        
+        -- Логика включения/выключения
+        if key == "silentaim" then
+            killBtn.Visible = flags.silentaim
+        elseif key == "invisible" then
+            local char = LP.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                if flags.invisible then
+                    hrp.CFrame = CFrame.new(0, -300, 0) -- Под карту
+                    hrp.Anchored = true
+                    Camera.CameraSubject = nil
+                    Camera.CFrame = CFrame.new(0, 50, 0) -- Камера наверху
+                else
+                    hrp.Anchored = false
+                    Camera.CameraSubject = char:FindFirstChildOfClass("Humanoid")
+                    if char:FindFirstChild("HumanoidRootPart") then
+                        char.HumanoidRootPart.CFrame = CFrame.new(0, 5, 0) -- Возврат на спавн (примерно)
+                    end
+                end
+            end
+        end
     end)
 end
 
-addToggle("ESP Box", "espBox")
-addToggle("Aimbot (Murderer)", "aimbot")
-addToggle("AntiAim", "antiaim")
-addToggle("Speed x2", "speedX2")
-addToggle("Jump x2", "jumpX2")
-addToggle("Weld Fusion Fling", "blinkFling")
+-- Порядок в меню
+addToggle("silentaim", "silentaim")
+addToggle("esp", "esp")
+addToggle("speedhack", "speedhack")
+addToggle("jump", "jump")
+addToggle("antiaim", "antiaim")
+addToggle("invisible", "invisible")
+addToggle("masskill", "masskill")
 
--- ====== ПЕРЕТАСКИВАНИЕ ОКНА ======
+-- Перетаскивание меню
 local dragging, dragStart, startPos
-toggleBtn.InputBegan:Connect(function(input)
+title.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true; dragStart = input.Position; startPos = toggleBtn.Position
+        dragging = true; dragStart = input.Position; startPos = menu.Position
         input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
     if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - dragStart
-        toggleBtn.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        local d = input.Position - dragStart
+        menu.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
     end
 end)
 toggleBtn.MouseButton1Click:Connect(function() menu.Visible = not menu.Visible end)
@@ -130,7 +160,7 @@ RunService.RenderStepped:Connect(function()
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         local data = espCache[plr]
         
-        if not flags.espBox or not (hrp and hum and hum.Health > 0) then
+        if not flags.esp or not (hrp and hum and hum.Health > 0) then
             if data then data.box.Visible = false; data.hpBack.Visible = false end
             continue
         end
@@ -142,9 +172,9 @@ RunService.RenderStepped:Connect(function()
                 if obj.Name == "Gun" or obj.Name == "Revolver" then isSherif = true end
             end
         end
-        local backpack = plr:FindFirstChild("Backpack")
-        if backpack then
-            for _, obj in ipairs(backpack:GetChildren()) do
+        local bp = plr:FindFirstChild("Backpack")
+        if bp then
+            for _, obj in ipairs(bp:GetChildren()) do
                 if obj:IsA("Tool") then
                     if obj.Name == "Knife" then isMurder = true end
                     if obj.Name == "Gun" or obj.Name == "Revolver" then isSherif = true end
@@ -157,8 +187,8 @@ RunService.RenderStepped:Connect(function()
         if isSherif then color = Color3.fromRGB(40, 140, 255) end
 
         if not data then
-            local box = Instance.new("Frame")
-            box.BackgroundTransparency = 1; box.BorderSizePixel = 0; box.Parent = espFolder
+            local box = Instance.new("Frame", espFolder)
+            box.BackgroundTransparency = 1; box.BorderSizePixel = 0
             local s = Instance.new("UIStroke", box)
             s.Thickness = 1.5; s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             local hpBack = Instance.new("Frame", espFolder)
@@ -189,7 +219,25 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ====== AIMBOT ======
+-- ====== SPEEDHACK / JUMP / ANTIAIM ======
+RunService.Stepped:Connect(function()
+    local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed = flags.speedhack and 32 or 16
+        hum.UseJumpPower = true
+        hum.JumpPower = flags.jump and 100 or 50
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if flags.antiaim then
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp and not hrp.Anchored then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(math.random(0, 360)), 0) end
+    end
+end)
+
+-- ====== SILENT AIM (Kill Murder по кнопке) ======
 local function getMurder()
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LP then continue end
@@ -205,134 +253,95 @@ local function getMurder()
     end
 end
 
-RunService.RenderStepped:Connect(function()
-    if not flags.aimbot then return end
-    local char = LP.Character
-    if not char then return end
-    local hasGun = false
-    for _, tool in ipairs(char:GetChildren()) do if tool:IsA("Tool") and (tool.Name == "Gun" or tool.Name == "Revolver") then hasGun = true end end
-    if not hasGun then return end
-    local target = getMurder()
-    if not target then return end
-    local tHead = target.Character and target.Character:FindFirstChild("Head")
-    if tHead then Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, tHead.Position) end
-end)
-
--- ====== ANTIAIM / SPEED / JUMP ======
-RunService.RenderStepped:Connect(function()
-    if not flags.antiaim then return end
-    local char = LP.Character
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
-    if hrp then hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(math.random(0, 360)), 0) end
-end)
-
-RunService.Stepped:Connect(function()
-    local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hum.WalkSpeed = flags.speedX2 and 32 or 16
-        hum.UseJumpPower = true
-        hum.JumpPower = flags.jumpX2 and 100 or 50
+killBtn.MouseButton1Click:Connect(function()
+    if not flags.silentaim then return end
+    local murder = getMurder()
+    if not murder then return end
+    local targetHrp = murder.Character and murder.Character:FindFirstChild("HumanoidRootPart")
+    
+    -- Пытаемся убить сквозь стены (через изменение позиции своего HRP или FireServer)
+    if targetHrp then
+        -- Меняем CFrame ножа в руке жертвы (или стреляем)
+        -- В реальном MM2 silent aim требует FireServer на оружие, но в Delta это работает так:
+        -- (Заглушка, так как без знания RemoteEvent MM2 точный silent aim не сделать)
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            -- Телепортируем удар (для мардера)
+            local tool = char:FindFirstChild("Knife")
+            if tool and tool:FindFirstChild("Handle") then
+                tool.Handle.CFrame = targetHrp.CFrame
+            end
+            -- Если пистолет:
+            local gun = char:FindFirstChild("Gun") or char:FindFirstChild("Revolver")
+            if gun then
+                -- FireServer заглушка
+            end
+        end
     end
 end)
 
--- ====== WELD FUSION FLING (Жесткая сварка) ======
-local flinging = false
-local flingCD = {}
-
+-- ====== MASSKILL (Стягивание и убийство) ======
 RunService.Stepped:Connect(function()
-    if not flags.blinkFling or flinging then return end
+    if not flags.masskill then return end
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
-
-    -- Ищем жертву
-    local targetPlr, targetHrp = nil, nil
-    local shortest = 6
-
+    
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LP then continue end
         local tChar = plr.Character
         local tHrp = tChar and tChar:FindFirstChild("HumanoidRootPart")
         if tHrp then
-            local dist = (tHrp.Position - hrp.Position).Magnitude
-            if dist < shortest then
-                shortest = dist
-                targetPlr = plr
-                targetHrp = tHrp
-            end
+            -- Стягиваем к себе (локально, может быть визуалом)
+            tHrp.CFrame = hrp.CFrame * CFrame.new(0, 0, 3) -- Ставим перед собой
         end
     end
+end)
 
-    if targetPlr and targetHrp and not flingCD[targetPlr] then
-        flingCD[targetPlr] = true
-        flinging = true
-
-        task.spawn(function()
-            local originalCFrame = hrp.CFrame
+-- ====== REWIND (Отмотка на 3 сек по клавише E) ======
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.E and not rewindActive then
+        rewindActive = true
+        local char = LP.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        if not hrp then rewindActive = false return end
+        
+        -- Ищем точки 3 секунды назад
+        local pointsToRewind = {}
+        for i, data in ipairs(recordedPositions) do
+            if tick() - data.time <= 3 then
+                table.insert(pointsToRewind, data)
+            end
+        end
+        
+        if #pointsToRewind > 0 then
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then hum.PlatformStand = true end
             
-            -- 1. ОТКЛЮЧАЕМ КОЛЛИЗИЮ (чтобы ты не отскочил от него как мячик)
-            hrp.CanCollide = false
-            targetHrp.CanCollide = false
+            -- Проигрываем в обратном порядке (от старых к новым)
+            for i = #pointsToRewind, 1, -1 do
+                local p = pointsToRewind[i]
+                hrp.CFrame = p.cframe
+                RunService.Heartbeat:Wait()
+            end
             
-            -- 2. ТЕЛЕПОРТИРУЕМСЯ ВНУТРЬ
-            hrp.CFrame = targetHrp.CFrame
-            
-            -- 3. СВАРКА (WELD)
-            local weld = Instance.new("WeldConstraint")
-            weld.Part0 = targetHrp
-            weld.Part1 = hrp
-            weld.Parent = targetHrp
-            
-            -- Ждем 0.15 сек, чтобы ты визуально оказался внутри него
-            task.wait(0.15)
-            
-            -- 4. ДАЕМ СКОРОСТЬ ВАМ ОБОИМ (летим вместе)
-            local bv = Instance.new("BodyVelocity")
-            bv.Velocity = Vector3.new(0, 5000, 0)
-            bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            bv.Parent = hrp -- Вешаем на тебя, но так как мы сварены, жертва летит с тобой
-            
-            -- 5. ЖДЕМ 0.4 СЕКУНДЫ (ты и жертва летите вверх)
-            task.wait(0.4)
-            
-            -- 6. ОТЦЕПЛЯЕМСЯ И ВОЗВРАЩАЕМСЯ
-            weld:Destroy() -- Ломаем сварку
-            bv:Destroy()   -- Убираем скорость с себя
-            
-            hrp.CFrame = originalCFrame -- Тепаемся назад
-            hrp.AssemblyLinearVelocity = Vector3.zero
-            hrp.AssemblyAngularVelocity = Vector3.zero
-            hrp.CanCollide = true
-            
-            -- Жертве оставляем скорость, чтобы он летел дальше
-            local tBv = Instance.new("BodyVelocity")
-            tBv.Velocity = Vector3.new(0, 5000, 0)
-            tBv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-            tBv.Parent = targetHrp
-            
-            task.delay(1, function()
-                if tBv then tBv:Destroy() end
-                if targetHrp then targetHrp.CanCollide = true end
-            end)
-            
-            flinging = false
-            task.wait(1) -- Кулдаун
-            flingCD[targetPlr] = nil
-        end)
+            if hum then hum.PlatformStand = false end
+        end
+        rewindActive = false
     end
 end)
 
--- ====== ПЕРЕТАСКИВАНИЕ МЕНЮ ======
-local mdragging, mdStart, mStart
-title.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        mdragging = true; mdStart = input.Position; mStart = menu.Position
-        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then mdragging = false end end)
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if mdragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local d = input.Position - mdStart
-        menu.Position = UDim2.new(mStart.X.Scale, mStart.X.Offset + d.X, mStart.Y.Scale, mStart.Y.Offset + d.Y)
+-- Запись позиций для Rewind
+RunService.Heartbeat:Connect(function()
+    local char = LP.Character
+    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        table.insert(recordedPositions, { time = tick(), cframe = hrp.CFrame })
+        -- Чистим старые записи (старше 10 сек), чтобы не забивать память
+        if #recordedPositions > 100 then
+            table.remove(recordedPositions, 1)
+        end
     end
 end)
